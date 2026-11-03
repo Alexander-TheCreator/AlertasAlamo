@@ -42,10 +42,6 @@
                         <span class="gov-badge-municipio">
                             Álamo Temapache, Ver.
                         </span>
-                        <span class="gov-badge-live">
-                            <span class="gov-live-dot"></span>
-                            Monitor en Vivo Activo
-                        </span>
                     </div>
                     <h1 class="gov-title">
                         ÁLAMO TEMAPACHE

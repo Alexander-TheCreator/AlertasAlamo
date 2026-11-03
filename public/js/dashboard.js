@@ -208,7 +208,7 @@
             const marker = L.marker([report.latitude, report.longitude], { icon: customIcon });
 
             const evidenceImg = report.evidence_initial
-                ? `<img src="${report.evidence_initial}" alt="Evidencia" style="width:100%; height:105px; object-fit:cover; border-radius:8px; margin: 8px 0 10px 0; border: 1px solid rgba(123, 17, 35, 0.2);">`
+                ? `<img src="${report.evidence_initial}" alt="Evidencia" style="width:100%; height:105px; object-fit:cover; border-radius:8px; margin: 8px 0 10px 0; border: 1px solid rgba(123, 17, 35, 0.2);" onerror="this.onerror=null; this.style.display='none';">`
                 : '';
 
             const popupHtml = `
@@ -271,11 +271,11 @@
                 : '--:--';
 
             const photoInitial = report.evidence_initial
-                ? `<img src="${report.evidence_initial}" onclick="window.openReportModal(${report.id})" class="w-12 h-12 rounded-lg object-cover cursor-pointer hover:scale-105 transition" style="border: 1px solid var(--border-color);" title="Evidencia Inicial (Ciudadano)">`
+                ? `<img src="${report.evidence_initial}" onclick="window.openReportModal(${report.id})" class="w-12 h-12 rounded-lg object-cover cursor-pointer hover:scale-105 transition" style="border: 1px solid var(--border-color);" title="Evidencia Inicial (Ciudadano)" onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=Sin+Foto';">`
                 : `<div class="w-12 h-12 rounded-lg flex items-center justify-center text-xs" style="background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-muted);"><i class="fa-solid fa-camera-slash"></i></div>`;
 
             const photoResolution = report.evidence_resolution
-                ? `<img src="${report.evidence_resolution}" onclick="window.openReportModal(${report.id})" class="w-12 h-12 rounded-lg object-cover cursor-pointer hover:scale-105 transition" style="border: 2px solid var(--status-resolved);" title="Evidencia de Cierre (Municipio)">`
+                ? `<img src="${report.evidence_resolution}" onclick="window.openReportModal(${report.id})" class="w-12 h-12 rounded-lg object-cover cursor-pointer hover:scale-105 transition" style="border: 2px solid var(--status-resolved);" title="Evidencia de Cierre (Municipio)" onerror="this.onerror=null; this.style.display='none';">`
                 : '';
 
             return `
@@ -382,7 +382,11 @@
         // Evidencia Inicial ("Antes")
         const imgInit = document.getElementById('modal-img-initial');
         if (imgInit) {
-            imgInit.src = report.evidence_initial || 'https://via.placeholder.com/600x400?text=Sin+Evidencia+Inicial';
+            imgInit.onerror = function() {
+                this.onerror = null;
+                this.src = 'https://placehold.co/600x400?text=Imagen+No+Disponible';
+            };
+            imgInit.src = report.evidence_initial || 'https://placehold.co/600x400?text=Sin+Evidencia+Inicial';
         }
 
         // Evidencia de Resolución ("Después")
@@ -390,6 +394,15 @@
         const noRes = document.getElementById('modal-no-resolution');
         if (report.evidence_resolution) {
             if (imgRes) {
+                imgRes.onerror = function() {
+                    this.onerror = null;
+                    this.classList.add('hidden');
+                    this.style.display = 'none';
+                    if (noRes) {
+                        noRes.classList.remove('hidden');
+                        noRes.style.display = 'flex';
+                    }
+                };
                 imgRes.src = report.evidence_resolution;
                 imgRes.classList.remove('hidden');
                 imgRes.style.display = 'block';

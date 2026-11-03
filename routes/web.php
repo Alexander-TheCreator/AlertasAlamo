@@ -8,6 +8,11 @@ Route::get('/', function () {
     return redirect()->route('municipal.dashboard');
 });
 
+// Ruta puente para servir imágenes desde la carpeta externa compartida (public_html/images)
+Route::get('/shared-images/{filename}', [MunicipalDashboardController::class, 'serveSharedImage'])
+    ->where('filename', '.*')
+    ->name('municipal.shared_image');
+
 // ==========================================
 // FASE 1: PLATAFORMA WEB GOBIERNO MUNICIPAL
 // ==========================================

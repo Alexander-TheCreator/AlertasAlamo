@@ -14,6 +14,11 @@ class MunicipalDashboardController extends Controller
     public function index()
     {
         $reports = IncidentReport::orderBy('created_at', 'desc')->get();
+        $reports->transform(function ($report) {
+            $report->evidence_initial = $this->formatImageUrl($report->evidence_initial);
+            $report->evidence_resolution = $this->formatImageUrl($report->evidence_resolution);
+            return $report;
+        });
         $stats = $this->calculateStats();
 
         return view('municipal.dashboard', compact('reports', 'stats'));
@@ -25,6 +30,11 @@ class MunicipalDashboardController extends Controller
     public function poll()
     {
         $reports = IncidentReport::orderBy('created_at', 'desc')->get();
+        $reports->transform(function ($report) {
+            $report->evidence_initial = $this->formatImageUrl($report->evidence_initial);
+            $report->evidence_resolution = $this->formatImageUrl($report->evidence_resolution);
+            return $report;
+        });
         $stats = $this->calculateStats();
 
         return response()->json([
@@ -32,6 +42,53 @@ class MunicipalDashboardController extends Controller
             'stats' => $stats,
             'server_time' => now()->format('H:i:s'),
         ]);
+    }
+
+    /**
+     * Sirve imágenes desde la carpeta compartida externa o localmente como fallback
+     */
+    public function serveSharedImage($filename)
+    {
+        // Limpiar el nombre del archivo para evitar Directory Traversal
+        $cleanFilename = basename($filename);
+
+        // Rutas posibles de búsqueda (priorizando la carpeta compartida en Hostinger)
+        $paths = [
+            base_path('../images/' . $cleanFilename),              // Producción Hostinger (public_html/images)
+            base_path('../images/' . $filename),
+            public_path('images/' . $cleanFilename),               // Entorno local
+            public_path('uploads/evidences/' . $cleanFilename),
+        ];
+
+        foreach ($paths as $path) {
+            if (file_exists($path) && is_file($path)) {
+                return response()->file($path, [
+                    'Cache-Control' => 'public, max-age=86400',
+                    'Access-Control-Allow-Origin' => '*'
+                ]);
+            }
+        }
+
+        abort(404, 'Imagen no encontrada.');
+    }
+
+    /**
+     * Normaliza las URLs de imágenes antes de enviarlas al frontend
+     */
+    private function formatImageUrl(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        // Si ya es una URL externa completa (Unsplash, etc.)
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        // Extraer solo el nombre de archivo y servirlo por la ruta puente
+        $filename = basename($path);
+        return url('/shared-images/' . $filename);
     }
 
     /**
@@ -54,21 +111,27 @@ class MunicipalDashboardController extends Controller
             $report->resolved_at = Carbon::now();
         }
 
-        // Guardado directo en public/uploads/evidences (100% compatible con Hostinger sin problemas de symlink)
+        // Guardado de evidencia municipal en carpeta compartida o fallback local
         if ($request->hasFile('evidence_resolution')) {
             $file = $request->file('evidence_resolution');
             $filename = 'res_' . $report->folio . '_' . time() . '.' . $file->getClientOriginalExtension();
-            $destinationPath = public_path('uploads/evidences');
 
-            if (!file_exists($destinationPath)) {
-                mkdir($destinationPath, 0755, true);
+            $sharedDir = base_path('../images');
+            $destination = (is_dir($sharedDir) && is_writable($sharedDir)) ? $sharedDir : public_path('images');
+
+            if (!file_exists($destination)) {
+                @mkdir($destination, 0755, true);
             }
 
-            $file->move($destinationPath, $filename);
-            $report->evidence_resolution = asset('uploads/evidences/' . $filename);
+            $file->move($destination, $filename);
+            $report->evidence_resolution = $filename;
         }
 
         $report->save();
+
+        // Normalizar URLs antes de enviar en la respuesta JSON
+        $report->evidence_initial = $this->formatImageUrl($report->evidence_initial);
+        $report->evidence_resolution = $this->formatImageUrl($report->evidence_resolution);
 
         return response()->json([
             'success' => true,
